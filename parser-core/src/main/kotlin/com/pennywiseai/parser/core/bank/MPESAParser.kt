@@ -150,6 +150,14 @@ class MPESAParser : BankParser() {
         return null
     }
 
+    /**
+     * M-PESA is a mobile wallet — its SMS never carry the user's own account number.
+     * The "for account NUMBER" in paybill messages is the biller's account, and other
+     * digits are phone/paybill numbers. Returning null prevents the base-class
+     * "Account NUMBER" pattern from spawning bogus "M-PESA ***NNNN" accounts.
+     */
+    override fun extractAccountLast4(message: String): String? = null
+
     override fun extractBalance(message: String): BigDecimal? {
         val patterns = listOf(
             Regex("""New M-PESA balance is Ksh([0-9,]+(?:\.[0-9]{2})?)""", RegexOption.IGNORE_CASE),

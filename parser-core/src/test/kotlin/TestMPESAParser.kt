@@ -231,4 +231,14 @@ class MPESAParserTest {
 
         return ParserTestUtils.runTestSuite(parser, testCases, handleCases, "M-PESA Parser Tests")
     }
+
+    @Test
+    fun `paybill message with for account does not extract an account last4`() {
+        val parser = MPESAParser()
+        val message = """TJK6H7T0JT Confirmed. Ksh50.00 sent to KPLC PREPAID for account 1234567890 on 13/6/26 at 4:26 PM New M-PESA balance is Ksh123.12. Transaction cost, Ksh23.00."""
+        val parsed = parser.parse(message, "MPESA", System.currentTimeMillis())
+        Assertions.assertNotNull(parsed, "Paybill message should parse")
+        Assertions.assertNull(parsed?.accountLast4, "M-PESA must not extract an account last4 from the biller account number")
+        Assertions.assertEquals("KPLC PREPAID", parsed?.merchant)
+    }
 }

@@ -66,6 +66,13 @@ class AirtelMoneyKenyaParser : BankParser() {
         return null
     }
 
+    /**
+     * Airtel Money is a mobile wallet — its SMS never carry the user's own account
+     * number. Any "account NUMBER" refers to a biller, so suppress the base-class
+     * account extraction to avoid spawning bogus "Airtel Money ***NNNN" accounts.
+     */
+    override fun extractAccountLast4(message: String): String? = null
+
     override fun extractBalance(message: String): BigDecimal? {
         val patterns = listOf(
             Regex("""Bal:\s*Kshs?\s?([0-9,]+(?:\.[0-9]{1,2})?)""", RegexOption.IGNORE_CASE),
