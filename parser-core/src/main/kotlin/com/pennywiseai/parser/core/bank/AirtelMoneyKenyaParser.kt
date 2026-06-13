@@ -5,6 +5,12 @@ import java.math.BigDecimal
 
 class AirtelMoneyKenyaParser : BankParser() {
 
+    companion object {
+        // Mobile wallet with no account number in its SMS; the single wallet is
+        // keyed by a stable identifier so it is auto-detected as an account.
+        const val WALLET_ACCOUNT = "WALLET"
+    }
+
     override fun getBankName() = "Airtel Money Kenya"
 
     override fun getCurrency() = "KES"
@@ -68,10 +74,12 @@ class AirtelMoneyKenyaParser : BankParser() {
 
     /**
      * Airtel Money is a mobile wallet — its SMS never carry the user's own account
-     * number. Any "account NUMBER" refers to a biller, so suppress the base-class
-     * account extraction to avoid spawning bogus "Airtel Money ***NNNN" accounts.
+     * number. Any "account NUMBER" refers to a biller, so we never feed it to the
+     * base-class "Account NUMBER" pattern (which spawned bogus "***NNNN" accounts).
+     * Every transaction maps to the single Airtel Money wallet via a stable
+     * identifier so the wallet is auto-detected as an account.
      */
-    override fun extractAccountLast4(message: String): String? = null
+    override fun extractAccountLast4(message: String): String = WALLET_ACCOUNT
 
     override fun extractBalance(message: String): BigDecimal? {
         val patterns = listOf(

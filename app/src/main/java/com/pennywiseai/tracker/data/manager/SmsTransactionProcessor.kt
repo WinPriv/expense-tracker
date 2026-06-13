@@ -310,5 +310,42 @@ class SmsTransactionProcessor @Inject constructor(
             accountBalanceRepository.insertBalance(balanceEntity)
             Log.d(TAG, "Saved balance update for ${parsedTransaction.bankName} **$targetAccountLast4")
         }
+
+        saveSecondaryBalance(parsedTransaction, entity, rowId)
+    }
+
+    /**
+     * Some wallet SMS report balances for two of the user's own accounts at once
+     * (e.g. an M-PESA <-> M-Shwari transfer prints both the M-PESA and M-Shwari
+     * balances). When the parser supplies a secondary pair, record its balance so
+     * the second account stays up to date from the same SMS.
+     */
+    private suspend fun saveSecondaryBalance(
+        parsedTransaction: ParsedTransaction,
+        entity: TransactionEntity,
+        rowId: Long
+    ) {
+        val secondaryAccountLast4 = parsedTransaction.secondaryAccountLast4 ?: return
+        val secondaryBalance = parsedTransaction.secondaryBalance ?: return
+        val existingAccount = accountBalanceRepository.getLatestBalance(
+            parsedTransaction.bankName,
+            secondaryAccountLast4
+        )
+        val balanceEntity = AccountBalanceEntity(
+            bankName = parsedTransaction.bankName,
+            accountLast4 = secondaryAccountLast4,
+            balance = secondaryBalance,
+            timestamp = entity.dateTime,
+            transactionId = if (rowId != -1L) rowId else null,
+            creditLimit = existingAccount?.creditLimit,
+            isCreditCard = existingAccount?.isCreditCard ?: false,
+            smsSource = parsedTransaction.smsBody.take(500),
+            sourceType = "TRANSACTION",
+            currency = parsedTransaction.currency,
+            profileId = existingAccount?.profileId ?: ProfileEntity.PERSONAL_ID,
+            alias = existingAccount?.alias
+        )
+        accountBalanceRepository.insertBalance(balanceEntity)
+        Log.d(TAG, "Saved secondary balance for ${parsedTransaction.bankName} **$secondaryAccountLast4")
     }
 }

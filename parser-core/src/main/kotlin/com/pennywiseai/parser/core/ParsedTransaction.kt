@@ -18,7 +18,16 @@ data class ParsedTransaction(
     val isFromCard: Boolean = false,
     val currency: String = "INR",
     val fromAccount: String? = null,
-    val toAccount: String? = null
+    val toAccount: String? = null,
+    /**
+     * Some wallet SMS report balances for two of the user's own accounts in a
+     * single message — e.g. an M-PESA <-> M-Shwari transfer prints both the
+     * M-PESA balance (in [balance]) and the M-Shwari balance here. When set, the
+     * app records a second balance row for ([bankName], [secondaryAccountLast4])
+     * so both accounts stay up to date from one SMS.
+     */
+    val secondaryAccountLast4: String? = null,
+    val secondaryBalance: BigDecimal? = null
 ) {
     fun generateTransactionId(): String {
         val normalizedAmount = amount.setScale(2, java.math.RoundingMode.HALF_UP)

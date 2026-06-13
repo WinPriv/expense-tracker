@@ -6,6 +6,14 @@ import java.math.BigDecimal
 
 class MPESAParser : BankParser() {
 
+    companion object {
+        // M-PESA is a mobile wallet with no account number in its SMS, so each
+        // logical balance is keyed by a stable identifier instead of a last4.
+        const val WALLET_ACCOUNT = "WALLET"
+        const val MSHWARI_ACCOUNT = "MSHWARI"
+        const val CASH_ACCOUNT = "CASH"
+    }
+
     override fun getBankName() = "M-PESA"
 
     override fun getCurrency() = "KES"
@@ -22,14 +30,42 @@ class MPESAParser : BankParser() {
         val base = super.parse(smsBody, sender, timestamp) ?: return null
         if (base.type != TransactionType.TRANSFER) return base
         val lower = smsBody.lowercase()
-        val (fromAccount, toAccount) = when {
-            lower.contains("transferred from m-shwari") -> "M-Shwari" to "M-PESA"
-            lower.contains("transferred to m-shwari") -> "M-PESA" to "M-Shwari"
-            lower.contains("withdraw") -> "M-PESA" to "Cash"
-            lower.contains("give") && lower.contains("cash to") -> "Cash" to "M-PESA"
-            else -> return base
+        return when {
+            lower.contains("transferred from m-shwari") -> base.copy(
+                fromAccount = MSHWARI_ACCOUNT,
+                toAccount = WALLET_ACCOUNT,
+                secondaryAccountLast4 = MSHWARI_ACCOUNT,
+                secondaryBalance = extractMShwariBalance(smsBody)
+            )
+            lower.contains("transferred to m-shwari") -> base.copy(
+                fromAccount = WALLET_ACCOUNT,
+                toAccount = MSHWARI_ACCOUNT,
+                secondaryAccountLast4 = MSHWARI_ACCOUNT,
+                secondaryBalance = extractMShwariBalance(smsBody)
+            )
+            lower.contains("withdraw") -> base.copy(
+                fromAccount = WALLET_ACCOUNT,
+                toAccount = CASH_ACCOUNT
+            )
+            lower.contains("give") && lower.contains("cash to") -> base.copy(
+                fromAccount = CASH_ACCOUNT,
+                toAccount = WALLET_ACCOUNT
+            )
+            else -> base
         }
-        return base.copy(fromAccount = fromAccount, toAccount = toAccount)
+    }
+
+    private fun extractMShwariBalance(message: String): BigDecimal? {
+        val patterns = listOf(
+            Regex("""New M-Shwari (?:saving )?account balance is Ksh\.?\s*([0-9,]+(?:\.[0-9]{2})?)""", RegexOption.IGNORE_CASE),
+            Regex("""M-Shwari balance is Ksh\.?\s*([0-9,]+(?:\.[0-9]{2})?)""", RegexOption.IGNORE_CASE),
+        )
+        for (pattern in patterns) {
+            pattern.find(message)?.let { match ->
+                return runCatching { BigDecimal(match.groupValues[1].replace(",", "")) }.getOrNull()
+            }
+        }
+        return null
     }
 
     override fun extractAmount(message: String): BigDecimal? {
@@ -152,11 +188,14 @@ class MPESAParser : BankParser() {
 
     /**
      * M-PESA is a mobile wallet — its SMS never carry the user's own account number.
-     * The "for account NUMBER" in paybill messages is the biller's account, and other
-     * digits are phone/paybill numbers. Returning null prevents the base-class
-     * "Account NUMBER" pattern from spawning bogus "M-PESA ***NNNN" accounts.
+     * The "for account NUMBER" in paybill messages is the biller's account, so we
+     * must not feed it to the base-class "Account NUMBER" pattern (that spawned
+     * bogus "M-PESA ***NNNN" accounts). Instead every transaction maps to the one
+     * M-PESA wallet via a stable identifier, so the wallet is auto-detected as an
+     * account. M-Shwari transfers carry their own balance separately via
+     * [ParsedTransaction.secondaryAccountLast4].
      */
-    override fun extractAccountLast4(message: String): String? = null
+    override fun extractAccountLast4(message: String): String = WALLET_ACCOUNT
 
     override fun extractBalance(message: String): BigDecimal? {
         val patterns = listOf(

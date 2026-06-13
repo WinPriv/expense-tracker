@@ -233,12 +233,42 @@ class MPESAParserTest {
     }
 
     @Test
-    fun `paybill message with for account does not extract an account last4`() {
+    fun `paybill 'for account' maps to the wallet, not the biller number`() {
         val parser = MPESAParser()
         val message = """TJK6H7T0JT Confirmed. Ksh50.00 sent to KPLC PREPAID for account 1234567890 on 13/6/26 at 4:26 PM New M-PESA balance is Ksh123.12. Transaction cost, Ksh23.00."""
         val parsed = parser.parse(message, "MPESA", System.currentTimeMillis())
         Assertions.assertNotNull(parsed, "Paybill message should parse")
-        Assertions.assertNull(parsed?.accountLast4, "M-PESA must not extract an account last4 from the biller account number")
+        Assertions.assertEquals(
+            MPESAParser.WALLET_ACCOUNT,
+            parsed?.accountLast4,
+            "M-PESA must map to the wallet, never the biller account number (7890)"
+        )
         Assertions.assertEquals("KPLC PREPAID", parsed?.merchant)
+    }
+
+    @Test
+    fun `M-Shwari credit updates both the wallet and M-Shwari balances`() {
+        val parser = MPESAParser()
+        val message = """TJA1B2C3DE Confirmed. Ksh500.00 transferred from M-Shwari account on 12/01/24 at 10:30 AM. M-Shwari balance is Ksh4,500.00 . M-PESA balance is Ksh1,500.00 . Transaction cost Ksh0.00"""
+        val parsed = parser.parse(message, "MPESA", System.currentTimeMillis())
+        Assertions.assertNotNull(parsed)
+        Assertions.assertEquals(MPESAParser.WALLET_ACCOUNT, parsed?.accountLast4)
+        Assertions.assertEquals(BigDecimal("1500.00"), parsed?.balance, "Primary balance is the M-PESA wallet balance")
+        Assertions.assertEquals(MPESAParser.MSHWARI_ACCOUNT, parsed?.secondaryAccountLast4)
+        Assertions.assertEquals(BigDecimal("4500.00"), parsed?.secondaryBalance, "Secondary balance is the M-Shwari balance")
+        Assertions.assertEquals(MPESAParser.MSHWARI_ACCOUNT, parsed?.fromAccount)
+        Assertions.assertEquals(MPESAParser.WALLET_ACCOUNT, parsed?.toAccount)
+    }
+
+    @Test
+    fun `M-Shwari debit updates both balances with correct direction`() {
+        val parser = MPESAParser()
+        val message = """TJB2C3D4EF Confirmed. Ksh1000.00 transferred to M-Shwari account on 12/01/24 at 11:00 AM. M-PESA balance is Ksh2,000.00 . New M-Shwari account balance is Ksh6,000.00. Transaction cost Ksh0.00"""
+        val parsed = parser.parse(message, "MPESA", System.currentTimeMillis())
+        Assertions.assertNotNull(parsed)
+        Assertions.assertEquals(BigDecimal("2000.00"), parsed?.balance)
+        Assertions.assertEquals(BigDecimal("6000.00"), parsed?.secondaryBalance)
+        Assertions.assertEquals(MPESAParser.WALLET_ACCOUNT, parsed?.fromAccount)
+        Assertions.assertEquals(MPESAParser.MSHWARI_ACCOUNT, parsed?.toAccount)
     }
 }

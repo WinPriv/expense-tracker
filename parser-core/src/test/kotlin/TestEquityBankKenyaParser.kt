@@ -28,6 +28,7 @@ class EquityBankKenyaParserTest {
                     currency = "KES",
                     type = TransactionType.EXPENSE,
                     merchant = "John Doe",
+                    accountLast4 = EquityBankKenyaParser.WALLET_ACCOUNT,
                     balance = null,
                     reference = "ABC123XY"
                 )

@@ -5,6 +5,13 @@ import java.math.BigDecimal
 
 class EquityBankKenyaParser : BankParser() {
 
+    companion object {
+        // These SMS confirm Bank->MPESA transfers and never include the user's own
+        // Equity account number, so the account is keyed by a stable identifier so
+        // it is still auto-detected rather than left undetected.
+        const val WALLET_ACCOUNT = "WALLET"
+    }
+
     override fun getBankName() = "Equity Bank Kenya"
 
     override fun getCurrency() = "KES"
@@ -43,6 +50,8 @@ class EquityBankKenyaParser : BankParser() {
             }
         return null
     }
+
+    override fun extractAccountLast4(message: String): String = WALLET_ACCOUNT
 
     override fun extractBalance(message: String): BigDecimal? = null
 

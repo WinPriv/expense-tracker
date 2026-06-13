@@ -28,6 +28,7 @@ class AirtelMoneyKenyaParserTest {
                     currency = "KES",
                     type = TransactionType.EXPENSE,
                     merchant = "Airtel Kenya",
+                    accountLast4 = AirtelMoneyKenyaParser.WALLET_ACCOUNT,
                     balance = BigDecimal("1450.00"),
                     reference = "AB1234XY"
                 )
