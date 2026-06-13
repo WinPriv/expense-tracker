@@ -84,6 +84,8 @@ object BankParserFactory {
         MPesaMozambiqueParser(),  // M-Pesa Mozambique (must be before Tanzania & Kenya; gates on Portuguese "Confirmado" + "MT")
         MPesaTanzaniaParser(),  // M-Pesa Tanzania (must be before Kenya M-PESA)
         MPESAParser(),  // M-PESA (Kenya)
+        AirtelMoneyKenyaParser(),  // Airtel Money (Kenya)
+        EquityBankKenyaParser(),  // Equity Bank Kenya — outbound transfer confirmations
         SelcomPesaParser(),  // Selcom Pesa (Tanzania)
         TigoPesaParser(),  // Tigo Pesa / Mixx by Yas (Tanzania)
         CIBEgyptParser(),  // CIB - Commercial International Bank (Egypt)
